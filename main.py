@@ -104,6 +104,7 @@ class ExcelProcessorApp:
                 "Ritesh Salian": "Product",
                 "Nayan Kale": "Product",
                 "Nishu Shah": "Product",
+                "Chetan Adari": "Product",
                 "Hrishikesh Dadhe": "Product",
                 "Ashwini Kanojia": "Product",
                 "Dattatray Awaghade": "Product",
@@ -252,13 +253,15 @@ class ExcelProcessorApp:
 
             df["Task Type"] = df["Resource Name"].apply(infer_task_type)
 
-            # Mandays calculation
-            df["Mandays"] = pd.to_numeric(df["Actul Work(hrs)"], errors='coerce') / 8
-            df["Mandays"] = df["Mandays"].round(2)
+            # Mandays calculation (ROUNDUP(value/8,2) as in Excel)
+            df["Mandays"] = np.ceil(pd.to_numeric(df["Actul Work(hrs)"], errors='coerce') / 8 * 100) / 100
 
             # Billable logic (updated as per new rule)
             def infer_billable(row):
                 task_name_lower = str(row["Task Name"]).lower()
+                # Always not billable if Task Name contains 'leave'
+                if "leave" in task_name_lower:
+                    return "No"
                 # Always billable if Task Name is 'Sprint-Scrum-On Call Support'
                 if task_name_lower.strip() == "sprint-scrum-on call support":
                     return "Yes"
