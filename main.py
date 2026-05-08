@@ -91,8 +91,9 @@ class ExcelProcessorApp:
             resource_to_team = {
                 "Punam Patil": "Dcab",
                 "Paresh Damani": "Dcab",
-                "Suyog Vasage": "Digistyle",
+                "Tejas Deshmukh": "Dcab",
                 "Dattatray Awaghade": "Digistyle",
+                "Swapnil Karekar": "Digistyle",
                 "Prashant Bhayekar": "Product",
                 "Dhawalshri Jadhav": "Product",
                 "Anuja Redekar": "Product",
@@ -101,31 +102,28 @@ class ExcelProcessorApp:
                 "Royston Rodrigues": "Product",
                 "Sharad Kodag": "Product",
                 "Vipin Verma": "Product",
-                "Ritesh Salian": "Product",
-                "Nayan Kale": "Product",
                 "Nishu Shah": "Product",
                 "Chetan Adari": "Product",
                 "Hrishikesh Dadhe": "Product",
-                "Ashwini Kanojia": "Product",
-                "Dattatray Awaghade": "Product",
                 "Inderjeet Jethwani": "Product",
+                "Priyanka Gupta": "Product",
                 "Narayan Panigrahi": "Rebuying",
                 "Sushama Fernandes": "Rebuying",
-                "Rushikesh Shete": "Rebuying",
                 "Dhiraj Pawar": "Rebuying",
                 "Reshma Kute": "Rebuying",
-                "Mohammed Azim Ansari": "Rebuying",
                 "Sagar Padwal": "Rebuying",
                 "Shlok Patil": "Rebuying",
-                "Pranav Dasamane": "Rebuying",
-                "Vishal Naik": "Rebuying",
                 "Mohd Waseem Shaikh": "Rebuying",
                 "Ashwini Kanojia": "Rebuying",
-                "Jyotikaur Jassi": "Rebuying",
+                "Saurav Sharma": "Rebuying",
+                "Shahid Shaikh": "Rebuying",
+                "Pradnya Walkunde": "Rebuying",
+                "Ajinkya Koparde": "Rebuying",
+                "Kaustubh Chudji": "Rebuying",
                 "Soham Kale": "AI",
                 "Arun Kumar": "AI",
                 "Rishi Misra": "AI",
-                "Hardik Raja": "AI"
+                "Ajinkya Prabhu": "AI"
             }
 
             def infer_team(task, resource):
@@ -165,7 +163,12 @@ class ExcelProcessorApp:
                 "DINV": "d:invoice",
                 "DROSI": "Dcab",
                 "DMILE": "Milestonemaster",
-                "DSIGN": "Product"
+                "DSIGN": "Product",
+                "DMAR": "dmart",
+                "ONPR": "Onlinepricing",
+                "PRIPRI": "Printpricing",
+                "MRSH": "Marshaller",
+                "DPREP": "d:orderprep"
             }
 
 
@@ -173,18 +176,30 @@ class ExcelProcessorApp:
                 # Meeting/support logic
                 task = str(row["Task Name"])
                 issue = str(row["Issue#"])
-                # If Task Name is 'Framework Call', set Module as 'Framework'
-                if task.strip().lower() == "framework call":
-                    return "Framework"
-                if (
-                    "meeting" in task.lower() or
-                    "call" in task.lower() or
-                    "sprint-scrum-on call support" in task.lower()
-                ):
-                    return np.nan  # Placeholder, will fill later
-                # Use Issue# prefix for mapping
-                if issue and issue != 'nan':
-                    prefix = issue.split('-')[0].upper()
+                # Normalize task and Issue# handling
+                task_lower = task.strip().lower()
+                issue_val = row.get("Issue#")
+
+                # Specific meeting/support task names to treat as placeholders when Issue# is blank
+                meetings_set = {
+                    "sprint-scrum-on call support",
+                    "coe weekly call",
+                    "telephonic call",
+                    "framework call",
+                    "scrum call",
+                    "technical call",
+                    "sprint planning"
+                }
+
+                # If Issue# is blank (pd.NA or empty) and task is one of the meeting/support tasks,
+                # return np.nan so it can be filled from other same-day modules later.
+                if (not pd.notna(issue_val)) or str(issue_val).strip() == "":
+                    if task_lower in meetings_set:
+                        return np.nan  # Placeholder, will fill later
+
+                # Use Issue# prefix for mapping (safer check)
+                if pd.notna(issue_val) and str(issue_val).strip() != '':
+                    prefix = str(issue_val).strip().split('-')[0].upper()
                     if prefix == "DSDATA":
                         # Keyword to module mapping for DSDATA
                         keyword_to_module = {
@@ -210,7 +225,12 @@ class ExcelProcessorApp:
                             "pat": "d:pat",
                             "a2dss": "A2DSS",
                             "cpt": "CPT",
-                            "apl": "APL"
+                            "apl": "APL",
+                            "dmar":"dmart",
+                            "onpr":"Onlinepricing",
+                            "pripri":"Printpricing",
+                            "mrsh":"Marshaller",
+                            "dprep":"d:orderprep"
                         }
                         task_lower = task.lower()
                         for keyword, module in keyword_to_module.items():
@@ -226,6 +246,9 @@ class ExcelProcessorApp:
                 return ""
 
             df["Module"] = df.apply(infer_module, axis=1)
+            # Ensure Module is correct
+            df.loc[df["Resource Name"].isin(["Punam Patil", "Paresh Damani", "Tejas Deshmukh"]), "Module"] = "Dcab"
+            df.loc[df["Resource Name"].isin(["Dattatray Awaghade", "Swapnil Karekar"]), "Module"] = "Digistyle"
 
             # Task Type inference based on member mapping
             analysis_members = {
@@ -236,12 +259,16 @@ class ExcelProcessorApp:
                 "Dattatray Awaghade",
                 "Nishu Shah",
                 "Paresh Damani",
-                "Sagar Padwal"
+                "Sagar Padwal",
+                "Swapnil Karekar",
+                "Narayan Panigrahi",
+                "Kaustubh Chudji"
             }
             testing_members = {
                 "Anuja Redekar",
                 "Reshma Kute",
-                "Jyotikaur Jassi"
+                "Pradnya Walkunde"
+
             }
 
             def infer_task_type(resource):
@@ -253,8 +280,9 @@ class ExcelProcessorApp:
 
             df["Task Type"] = df["Resource Name"].apply(infer_task_type)
 
-            # Mandays calculation (ROUNDUP(value/8,2) as in Excel)
-            df["Mandays"] = np.ceil(pd.to_numeric(df["Actul Work(hrs)"], errors='coerce') / 8 * 100) / 100
+            # Mandays as Excel formula: =ROUNDUP([Actul Work(hrs)]/8,2)
+            # Placeholder; formulas will be written after saving the Excel file
+            df["Mandays"] = ""
 
             # Billable logic (updated as per new rule)
             def infer_billable(row):
@@ -264,6 +292,24 @@ class ExcelProcessorApp:
                     return "No"
                 # Always billable if Task Name is 'Sprint-Scrum-On Call Support'
                 if task_name_lower.strip() == "sprint-scrum-on call support":
+                    return "Yes"
+                # Always billable regardless of team
+                always_billable_tasks = {
+                    "coe weekly call",
+                    "functional testing of digistyle application",
+                    "interface call",
+                    "technical call",
+                    "showcase call",
+                    "sql coe dev dss",
+                    "technical call - bonprix",
+                    "telephonic call",
+                }
+                if task_name_lower.strip() in always_billable_tasks:
+                    return "Yes"
+                # For specific teams and task names, force Billable = Yes
+                special_billable_tasks = {"framework call", "sprint planning", "scrum call"}
+                team = str(row.get("Teams", ""))
+                if team in ("Digistyle", "Product") and task_name_lower.strip() in special_billable_tasks:
                     return "Yes"
                 # If Issue# is not empty or Task Name contains 'Project Management', mark as Yes
                 if (pd.notna(row["Issue#"]) and str(row["Issue#"]).strip() != "") or ("project management" in task_name_lower):
@@ -276,6 +322,17 @@ class ExcelProcessorApp:
 
             # Fill Module for meetings/support based on other modules for the same resource and date
             def fill_meeting_module(row, df):
+                task_name = str(row["Task Name"]).strip().lower()
+                # For Sprint-Scrum-On Call Support and On Leave, use most frequent module for the resource
+                if task_name in ["sprint-scrum-on call support", "on leave"]:
+                    resource = row["Resource Name"]
+                    # Exclude empty modules
+                    resource_modules = df[(df["Resource Name"] == resource) & (df["Module"].notna()) & (df["Module"] != "")]["Module"]
+                    if not resource_modules.empty:
+                        most_common = resource_modules.mode()
+                        if not most_common.empty:
+                            return most_common.iloc[0]
+                # Original logic for other meetings/support
                 if pd.isna(row["Module"]) or row["Module"] == "":
                     same_day = df[
                         (df["Resource Name"] == row["Resource Name"]) &
@@ -283,7 +340,9 @@ class ExcelProcessorApp:
                         (df["Module"].notna()) & (df["Module"] != "")
                     ]
                     if not same_day.empty:
-                        return same_day["Module"].iloc[0]
+                        most_common = same_day["Module"].mode()
+                        if not most_common.empty:
+                            return most_common.iloc[0]
                 return row["Module"]
 
             df["Module"] = df.apply(lambda row: fill_meeting_module(row, df), axis=1)
@@ -296,6 +355,9 @@ class ExcelProcessorApp:
             ]
             df["Task Name"] = df["Task Name Out"]
             df_out = df[output_cols]
+            # Sort output by Resource Name and then Entry Date as requested
+            if "Resource Name" in df_out.columns and "Entry Date" in df_out.columns:
+                df_out = df_out.sort_values(by=["Resource Name", "Entry Date"]).reset_index(drop=True)
 
             # Save dialog
             save_path = filedialog.asksaveasfilename(
@@ -304,7 +366,30 @@ class ExcelProcessorApp:
                 title="Save Processed File"
             )
             if save_path:
+                # Step 1: Save with pandas (Mandays column will have formula strings, but not as formulas yet)
                 df_out.to_excel(save_path, index=False)
+
+                # Step 2: Reopen with openpyxl and set Mandays column as formula + apply font
+                from openpyxl import load_workbook
+                from openpyxl.utils import get_column_letter
+                from openpyxl.styles import Font
+                wb = load_workbook(save_path)
+                ws = wb.active
+                # Find column indexes by header names
+                header_row = ws[1]
+                header_map = {cell.value: cell.column for cell in header_row}
+                actul_idx = header_map.get("Actul Work(hrs)")
+                mandays_idx = header_map.get("Mandays")
+                if actul_idx and mandays_idx:
+                    actul_letter = get_column_letter(actul_idx)
+                    for r in range(2, ws.max_row + 1):
+                        ws.cell(row=r, column=mandays_idx, value=f"=ROUNDUP({actul_letter}{r}/8,2)")
+                # Apply Microsoft Sans Serif size 8 to all cells
+                cell_font = Font(name="Microsoft Sans Serif", size=8)
+                for row in ws.iter_rows():
+                    for cell in row:
+                        cell.font = cell_font
+                wb.save(save_path)
                 self.status_label.config(text=f"File saved: {os.path.basename(save_path)}", fg="green")
             else:
                 self.status_label.config(text="Save cancelled.", fg="blue")
